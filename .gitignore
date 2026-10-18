@@ -1,1 +1,16 @@
+# ── Build y dependencias descargables (se obtienen con `cargo build`) ──
 /target
+/dist
+
+# ── Datos locales de la app: nunca al repo ──
+/json
+/input/*
+!/input/.gitkeep
+
+# ── Sistema / editores ──
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+.idea/
+.vscode/

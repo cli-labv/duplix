@@ -18,8 +18,15 @@ fn main() {
     }
 
     if !root.is_dir() {
-        eprintln!("No es una carpeta válida: {}", root.display());
-        std::process::exit(1);
+        if args.path.is_none() {
+            if let Err(e) = std::fs::create_dir_all(&root) {
+                eprintln!("No se pudo crear {}: {e}", root.display());
+                std::process::exit(1);
+            }
+        } else {
+            eprintln!("No es una carpeta válida: {}", root.display());
+            std::process::exit(1);
+        }
     }
 
     if args.menu {
