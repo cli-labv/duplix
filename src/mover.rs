@@ -10,6 +10,9 @@ pub struct MoveEntry {
     pub origen: PathBuf,
     pub destino: PathBuf,
     pub hash: String,
+    /// Tamaño en bytes del origen, cacheado para no re-stat en la ejecución.
+    #[serde(default)]
+    pub size: u64,
     /// `true` si es el archivo que se conserva (va a keep/); `false` si es un
     /// duplicado (va a duplicate/).
     #[serde(default)]
@@ -92,6 +95,7 @@ pub fn build_moves(
                 origen: fp.path.clone(),
                 destino,
                 hash: fp.hash.to_hex().to_string(),
+                size: fp.size,
                 kept,
                 revertido: false,
             });
@@ -157,17 +161,24 @@ pub fn write_log(path: &Path, log: &UndoLog) -> Result<(), String> {
     fs::write(path, json).map_err(|e| e.to_string())
 }
 
-/// Escribe el log de deshacer ANTES de mover nada, y luego ejecuta cada
-/// movimiento. Un fallo no frena el resto: se acumula en `errors`.
+/// Escribe el log de deshacer ANTES de mover nada, prepara las carpetas de
+/// destino de una sola vez y luego mueve todo en una única pasada (masivo).
+/// Un fallo no frena el resto: se acumula en `errors`.
 pub fn execute_moves<F: FnMut(usize, u64)>(
     log: &UndoLog,
     log_path: &Path,
     mut progress: F,
 ) -> Result<MoveReport, String> {
     write_log(log_path, log)?;
+    prepare_dest_dirs(log);
     let mut report = MoveReport::default();
     for m in &log.movimientos {
-        let size = fs::metadata(&m.origen).map(|md| md.len()).unwrap_or(0);
+        // El tamaño ya viene cacheado del plan; solo hacemos stat si falta.
+        let size = if m.size > 0 {
+            m.size
+        } else {
+            fs::metadata(&m.origen).map(|md| md.len()).unwrap_or(0)
+        };
         match move_one(m) {
             Ok(()) => {
                 report.moved += 1;
@@ -185,10 +196,19 @@ pub fn execute_moves<F: FnMut(usize, u64)>(
     Ok(report)
 }
 
-fn move_one(m: &MoveEntry) -> io::Result<()> {
-    if let Some(parent) = m.destino.parent() {
-        fs::create_dir_all(parent)?;
+/// Crea (una sola vez) cada carpeta de destino distinta entre los movimientos.
+fn prepare_dest_dirs(log: &UndoLog) {
+    let mut seen: HashSet<&Path> = HashSet::new();
+    for m in &log.movimientos {
+        if let Some(parent) = m.destino.parent() {
+            if seen.insert(parent) {
+                let _ = fs::create_dir_all(parent);
+            }
+        }
     }
+}
+
+fn move_one(m: &MoveEntry) -> io::Result<()> {
     match fs::rename(&m.origen, &m.destino) {
         Ok(()) => Ok(()),
         Err(_) => {

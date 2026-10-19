@@ -25,6 +25,8 @@ pub struct RunConfig {
     pub follow_links: bool,
     pub dry_run: bool,
     pub yes: bool,
+    /// Modo automático: conserva el sugerido y mueve el resto de una sola pasada.
+    pub auto: bool,
 }
 
 impl RunConfig {
@@ -40,6 +42,7 @@ impl RunConfig {
             follow_links: false,
             dry_run: false,
             yes: false,
+            auto: false,
         }
     }
 }
@@ -129,7 +132,7 @@ pub fn run(cfg: &RunConfig) -> io::Result<Outcome> {
     print_plan(&plan, "Se aplicará");
     print_totals(&plan);
 
-    if !cfg.yes && !confirm()? {
+    if !cfg.yes && !cfg.auto && !confirm()? {
         return Ok(Outcome::Cancelled);
     }
 
@@ -189,7 +192,17 @@ pub fn hash_stage(paths: &[PathBuf]) -> io::Result<Vec<Fingerprint>> {
 /// Devuelve el índice a conservar por grupo. Con `--yes` usa la regla sin
 /// preguntar; en terminal, revisa grupo a grupo.
 fn decide_keep(cfg: &RunConfig, groups: &[Vec<Fingerprint>]) -> io::Result<Option<Vec<usize>>> {
-    if cfg.yes || !io::stdin().is_terminal() {
+    if cfg.yes || cfg.auto || !io::stdin().is_terminal() {
+        if cfg.auto {
+            println!(
+                "{}",
+                style(format!(
+                    "modo automático · conservo el sugerido de {} grupos y muevo el resto de una vez",
+                    groups.len()
+                ))
+                .cyan()
+            );
+        }
         return Ok(Some(
             groups.iter().map(|g| choose_original(g, &cfg.keep)).collect(),
         ));

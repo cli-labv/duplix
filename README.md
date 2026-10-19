@@ -16,6 +16,8 @@ Cuando tienes carpetas con copias repetidas (fotos, PDFs, música), Duplix:
 ## ✨ Características
 - 🚀 Rápido (escaneo y hash en paralelo con `rayon`).
 - 🧠 Solo se queda con **un** original por grupo; el resto son duplicados.
+- ⚡ Modo `--auto`: sin preguntas, conserva el **sugerido** (primero de cada
+  lista) y mueve todos los duplicados en una sola pasada (masivo y rápido).
 - ↩️ **Reversión** total o de la última ejecución.
 - 🧹 Comando para limpiar caché/historial (nunca toca tus archivos).
 - 🔒 Todo queda en la carpeta del proyecto: **nada** sale a tu HOME ni al PATH.
@@ -39,6 +41,7 @@ La **primera vez** compila (tarda un poco). Las siguientes son instantáneas:
 ./start undo <log> # revierte una ejecución concreta
 ./start clean      # limpia historial y carpetas vacías
 ./start --yes      # sin preguntar, aplica la regla automática
+./start --auto     # automático: conserva el sugerido de cada grupo y mueve el resto de una sola pasada
 ```
 > ⚠️ Importante: hay un **espacio** entre `start` y la opción → `./start --menu`.
 

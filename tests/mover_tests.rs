@@ -89,6 +89,46 @@ fn test_dest_collision_gets_suffix() {
 }
 
 #[test]
+fn test_bulk_move_many_keeps_suggested() {
+    let dir = tempdir().unwrap();
+    let root = dir.path();
+    let first = root.join("f0.txt");
+    fs::write(&first, b"hello").unwrap();
+    let h = hash_of(&first);
+
+    let mut group = vec![fp(first.clone(), 5, h)];
+    for i in 1..5 {
+        let p = root.join(format!("f{i}.txt"));
+        fs::write(&p, b"hello").unwrap();
+        group.push(fp(p, 5, h));
+    }
+    let groups = vec![group];
+    let dest_dupe = root.join("duplicate");
+    let dest_keep = root.join("keep");
+
+    let plan = build_moves(&groups, &[0], &dest_dupe, &dest_keep);
+    assert_eq!(plan.moves.len(), 5, "1 conservado + 4 duplicados");
+    assert_eq!(plan.duplicates(), 4);
+    assert_eq!(plan.freed, 20, "4 duplicados * 5 bytes");
+    assert!(plan.moves.iter().all(|m| m.size == 5), "tamaño cacheado");
+    assert!(plan.moves.iter().any(|m| m.kept && m.origen == first));
+
+    let log = UndoLog {
+        fecha: "0".into(),
+        revertido_en: None,
+        carpeta_escaneada: root.to_path_buf(),
+        carpeta_duplicados: dest_dupe.clone(),
+        movimientos: plan.moves,
+    };
+    let log_path = root.join("undo.json");
+    let report = execute_moves(&log, &log_path, |_, _| {}).unwrap();
+    assert_eq!(report.moved, 5);
+    // El reporte cuenta todos los archivos movidos (conservado + duplicados).
+    assert_eq!(report.freed, 25);
+    assert!(report.errors.is_empty(), "{:?}", report.errors);
+}
+
+#[test]
 fn test_skipped_group_not_moved() {
     let dir = tempdir().unwrap();
     let root = dir.path();

@@ -23,6 +23,11 @@ pub struct Args {
     #[arg(long)]
     pub menu: bool,
 
+    /// Modo automático: conserva el sugerido de cada grupo y mueve el resto
+    /// de una sola pasada (masivo), sin preguntar nada
+    #[arg(long)]
+    pub auto: bool,
+
     /// Muestra qué se movería sin mover nada
     #[arg(long)]
     pub dry_run: bool,

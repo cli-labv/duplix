@@ -71,6 +71,7 @@ fn build_config(args: &Args, root: PathBuf) -> RunConfig {
         follow_links: args.follow_symlinks,
         dry_run: args.dry_run,
         yes: args.yes,
+        auto: args.auto,
     }
 }
 
