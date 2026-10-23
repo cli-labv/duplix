@@ -11,10 +11,10 @@ set BIN=%ROOT_DIR%\dist\duplix-windows-x86_64.exe
 if not exist "%BIN%" (
     echo Compilando ^(solo la primera vez^)...
     pushd "%ROOT_DIR%"
-    cargo build --release --target x86_64-pc-windows-gnu
+    cargo build --release --target x86_64-pc-windows-msvc
     popd
     if not exist "%ROOT_DIR%\dist" mkdir "%ROOT_DIR%\dist"
-    copy "%ROOT_DIR%\target\x86_64-pc-windows-gnu\release\duplix.exe" "%BIN%" >nul
+    copy "%ROOT_DIR%\target\x86_64-pc-windows-msvc\release\duplix.exe" "%BIN%" >nul
 )
 
 REM Aisla los datos de la app en esta carpeta: nada fuera de local.
