@@ -17,12 +17,19 @@ pub fn keep_dir(root: &Path) -> PathBuf {
 
 /// Carpeta base de la app. Todo lo que genera la app queda aquí, sin tocar el
 /// home ni el PATH del sistema. Se puede fijar con `DUPLIX_HOME`; si no, usa el
-/// directorio actual.
+/// directorio del ejecutable; como último recurso, el directorio actual.
 pub fn home() -> PathBuf {
     std::env::var_os("DUPLIX_HOME")
         .map(PathBuf::from)
+        .or_else(|| exe_dir())
         .or_else(|| std::env::current_dir().ok())
         .unwrap_or_else(|| PathBuf::from("."))
+}
+
+fn exe_dir() -> Option<PathBuf> {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
 }
 
 /// El historial vive en `<home>/json`, aislado dentro de la carpeta local.

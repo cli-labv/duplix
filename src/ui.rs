@@ -172,19 +172,45 @@ pub fn scan_stage(cfg: &RunConfig) -> io::Result<Vec<scanner::FileInfo>> {
 }
 
 pub fn hash_stage(paths: &[PathBuf]) -> io::Result<Vec<Fingerprint>> {
-    let pb = bar(paths.len() as u64, "comparando");
+    let pb = bar(paths.len() as u64, "pre-hash");
     let counter = Arc::new(AtomicUsize::new(0));
     let done = counter.clone();
     let handle = std::thread::spawn({
         let paths = paths.to_vec();
-        move || fingerprint::fingerprint_files(&paths, Some(done))
+        move || fingerprint::pre_fingerprint_files(&paths, Some(done))
     });
     while !handle.is_finished() {
         pb.set_position(counter.load(Ordering::Relaxed) as u64);
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
-    let fps = handle.join().unwrap_or_default();
+    let pre = handle.join().unwrap_or_default();
     pb.finish_and_clear();
+
+    // Agrupar por tamaño + pre_hash para reducir hashing completo
+    use std::collections::HashMap;
+    let mut map: HashMap<(u64, u64), Vec<PathBuf>> = HashMap::new();
+    for p in pre {
+        map.entry((p.size, p.pre_hash)).or_default().push(p.path);
+    }
+    let candidates: Vec<PathBuf> = map.values().filter(|v| v.len() > 1).flatten().cloned().collect();
+    if candidates.is_empty() {
+        println!("{}", style("comparados 0 archivos").dim());
+        return Ok(vec![]);
+    }
+
+    let pb2 = bar(candidates.len() as u64, "hash completo");
+    let counter2 = Arc::new(AtomicUsize::new(0));
+    let done2 = counter2.clone();
+    let handle2 = std::thread::spawn({
+        let cands = candidates;
+        move || fingerprint::fingerprint_files(&cands, Some(done2))
+    });
+    while !handle2.is_finished() {
+        pb2.set_position(counter2.load(Ordering::Relaxed) as u64);
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    let fps = handle2.join().unwrap_or_default();
+    pb2.finish_and_clear();
     println!("{}", style(format!("comparados {} archivos", fps.len())).dim());
     Ok(fps)
 }
@@ -206,6 +232,11 @@ fn decide_keep(cfg: &RunConfig, groups: &[Vec<Fingerprint>]) -> io::Result<Optio
         return Ok(Some(
             groups.iter().map(|g| choose_original(g, &cfg.keep)).collect(),
         ));
+    }
+
+    // En Windows usar UI ratatui con flechas; en Linux/Ubuntu mantener dialoguer.
+    if cfg!(target_os = "windows") {
+        return crate::ui_windows::decide_keep_windows(&cfg.keep, groups);
     }
 
     let theme = ColorfulTheme::default();

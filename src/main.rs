@@ -6,7 +6,13 @@ use std::path::PathBuf;
 
 fn main() {
     let args = Args::parse();
-    let root = args.path.clone().unwrap_or_else(|| PathBuf::from("input"));
+    if args.threads > 0 {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(args.threads)
+            .build_global()
+            .ok();
+    }
+    let root = args.path.clone().unwrap_or_else(|| paths::home().join("input"));
 
     match args.command {
         Some(Command::Undo { log }) => return run_undo(log),

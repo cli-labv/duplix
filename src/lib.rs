@@ -9,4 +9,5 @@ pub mod safety;
 pub mod scanner;
 pub mod table;
 pub mod ui;
+pub mod ui_windows;
 pub mod undo;

@@ -43,6 +43,10 @@ pub struct Args {
     /// Seguir symlinks a propósito (por defecto no se siguen)
     #[arg(long)]
     pub follow_symlinks: bool,
+
+    /// Número de hilos para hashing/escaneo. 0 = auto. En HDD usa 1-2.
+    #[arg(long, default_value_t = 0)]
+    pub threads: usize,
 }
 
 #[derive(Subcommand, Debug)]
